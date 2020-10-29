@@ -19,7 +19,57 @@ title(main = "Horsepower vs mpg Auto Dataset",
       xlab = "horsepower", ylab = "mpg")
 predict(lm.fit, data.frame(horsepower = 98))
 
-#
+# ex 2
+data(Boston)
+attach(Boston)
+names(Boston)
+#crim is the first index.
+all_vals <- list()
+for (val in names(Boston)[-1]) {
+  #print(paste0('crim ~', paste0(val), collapse = '+'))
+  print("-----------evaluating: ----------")
+  print(paste('crim ~ ', val, sep = ' '))
+  lm.fit <- lm(paste('crim ~', val, sep = ' '), data = Boston)
+  coeff <- lm.fit['coefficients'][[1]]
+  all_vals[val] <- coeff[val]
+}
+
+#  now for all attributes
+lm.fit <- lm(crim ~ ., data = Boston)
+coeff <- lm.fit['coefficients'][[1]][-1]
+plot(all_vals, coeff, xlab = '2a (individual)', ylab = '2b (combined)')
+text(all_vals, coeff, names(Boston)[-1], cex = 0.6, pos = 4, col = 'blue')
+
+lm.fit <- lm(crim ~ ., data = Boston)
+
+# ex 3
+data(Auto)
+names(Auto)
+attach(Auto)
+mpg01 <- ifelse(mpg > median(mpg), 1, 0)
+Auto['mpg01']<-mpg01
+
+
+#explore graphically:
+par(mfrow = c(3, 3))
+quant <- Auto[-length(Auto)]
+
+col_names <- names(quant)
+
+for (i in 1:length(quant)) {
+  #cat(col_names[i],'vs',col_names[j],'\n')
+  name <- paste('mpg01', 'vs', col_names[i])
+  #print(dim(quant[j]))
+
+  plot(mpg01, quant[[i]], xlab = 'mpg01', ylab = col_names[i], main = name)
+
+  #plot(0:(length(column) - 1), column,main = '')
+}
+Auto.train <- sample(1:nrow(Auto), 200)
+
+test=mpg01[-Auto.test]
+glm.fit<-glm(mpg01~displacement+horsepower+weight+acceleration,data=Auto,family=binomial,subset=Auto.train)
+
 #abline(lm.fit, lwd = 3, col = "red")
 #plot(lstat, medv, col = "red")
 #plot(lstat, medv, pch = 20)

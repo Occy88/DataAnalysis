@@ -30,6 +30,14 @@ summary(tree.carseats)
 plot(tree.carseats)
 text(tree.carseats, pretty = 0)
 
+data(Boston)
+attach(Boston)
+
+names(Boston)
+#crim is the first index.
+for(val in names(Boston)[-1]){
+  lm.fit<-lm(val)
+}
 
 cv.carseats <- cv.tree(tree.carseats)
 
