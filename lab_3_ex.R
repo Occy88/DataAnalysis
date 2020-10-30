@@ -47,7 +47,7 @@ data(Auto)
 names(Auto)
 attach(Auto)
 mpg01 <- ifelse(mpg > median(mpg), 1, 0)
-Auto['mpg01']<-mpg01
+Auto['mpg01'] <- mpg01
 
 
 #explore graphically:
@@ -67,85 +67,72 @@ for (i in 1:length(quant)) {
 }
 Auto.train <- sample(1:nrow(Auto), 200)
 
-test=mpg01[-Auto.train]
-glm.fit<-glm(mpg01~displacement+horsepower+weight+acceleration,data=Auto,family=binomial,subset=Auto.train)
+test = Auto[-Auto.train,]
+test_vals = mpg01[-Auto.train]
+glm.fit <- glm(mpg01 ~ displacement + horsepower + weight + acceleration, data = Auto, family = binomial, subset = Auto.train)
+glm.probs <- predict(glm.fit, test, type = "response")
+glm.pred <- rep(0, length(test_vals))
+glm.pred[glm.probs > .5] <- 1
+table(glm.pred, test_vals)
+print(mean(glm.pred == test_vals))
+print(mean(glm.pred != test_vals))
 
-#abline(lm.fit, lwd = 3, col = "red")
-#plot(lstat, medv, col = "red")
-#plot(lstat, medv, pch = 20)
-#plot(lstat, medv, pch = "+")
-#plot(1:20, 1:20, pch = 1:20)
-#
-#lm.fit <- lm(medv ~ lstat + age, data = Boston)
-#lm.fit
-#
-#lm.fit <- lm(medv ~ ., data = Boston)
-#lm.fit
-#
-#fix(Carseats)
-#names(Carseats)
-#
-#lm.fit <- lm(Sales ~ ., data = Carseats)
-#lm.fit
-#
-#attach(Carseats)
-#contrasts(ShelveLoc)
-#
-#names(Smarket)
-#summary(Smarket)
-#
-#attach(Smarket)
-#glm.fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,data = Smarket, family = binomial)
-#glm.fit
-#
-#coef(glm.fit)
-#
-#glm.probs <- predict(glm.fit, type = "response")
-#glm.probs[1:6]
-#
-#contrasts(Direction)
-#
-#glm.pred <- rep("Down", 1250)
-#glm.pred[glm.probs >.5] <- "Up"
-#
-#table(glm.pred, Direction)
-#
-#mean(glm.pred == Direction)
-#
-#train <- (Year < 2005)
-#Smarket.2005 <- Smarket[!train,]
-#dim(Smarket.2005)
-#
-#Direction.2005 <- Direction[!train]
-#
-#glm.fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,data = Smarket, family = binomial, subset = train)
-#glm.probs <- predict(glm.fit, Smarket.2005, type = "response")
-#
-#glm.pred <- rep("Down", 252)
-#glm.pred[glm.probs >.5] <- "Up"
-#table(glm.pred, Direction.2005)
-#mean(glm.pred == Direction.2005)
-#mean(glm.pred != Direction.2005)
-#
-#glm.fit <- glm(Direction ~ Lag1 + Lag2, data = Smarket, family = binomial,subset = train)
-#glm.probs <- predict(glm.fit, Smarket.2005, type = "response")
-#glm.pred <- rep("Down", 252)
-#glm.pred[glm.probs >.5] <- "Up"
-#table(glm.pred, Direction.2005)
-#mean(glm.pred == Direction.2005)
-#
-#predict(glm.fit, newdata = data.frame(Lag1 = c(1.2, 1.5),Lag2 = c(1.1, -0.8)), type = "response")
-#
-#
-##  KNN
-#library(class)
-#train.X <- cbind(Lag1, Lag2)[train,]
-#test.X <- cbind(Lag1, Lag2)[!train,]
-#train.Direction <- Direction[train]
-#
-#set.seed(1)
-#knn.pred <- knn(train.X, test.X, train.Direction, k = 1)
-#table(knn.pred, Direction.2005)
-#
-#knn.pred <- knn(train.X, test.X, train.Direction, k = 3)
-#table(knn.pred, Direction.2005)
+library(class)
+train.X <- cbind(displacement, horsepower, weight, acceleration)[Auto.train,]
+test.X <- cbind(displacement, horsepower, weight, acceleration)[-Auto.train,]
+train.Y <- mpg01[Auto.train]
+test.Y <- mpg01[-Auto.train]
+set.seed(1)
+for (k in 1:5) {
+  knn.pred <- knn(train.X, test.X, train.Y, k = k)
+  summary(knn.pred)
+  print(table(knn.pred, test.Y))
+  print(mean(knn.pred != test.Y))
+}
+
+#ifelse(mpg > median(mpg), 1, 0)
+data(Boston)
+fix(Boston)
+
+X <- Boston[-1]
+Y <- Boston[1]
+
+#convert to 0,1 for above/below median.
+Y[[1]] <- ifelse(Y[[1]] > median(Y[[1]]), 1, 0)
+
+train_labels <- sample(1:nrow(Y), 200)
+Y.train <- Y[train_labels,]
+Y.test <- Y[-train_labels,]
+X.train <- X[train_labels,]
+X.test <- X[-train_labels,]
+par(mfrow = c(4, 4))
+par(mar = c(2, 2, 2, 2))
+
+
+for (i in 1:length(X)) {
+  #cat(col_names[i],'vs',col_names[j],'\n')
+  name <- paste(colnames(Y), 'vs', colnames(X)[i])
+  #print(dim(quant[j]))
+
+  plot(X[[i]], Y[[1]], ylab = colnames(Y), xlab = colnames(X)[i], main = name)
+
+  #plot(0:(length(column) - 1), column,main = '')
+}
+
+
+glm.fit <- glm(paste(colnames(Y), '~', paste(colnames(X), collapse = ' + '), sep = ' '), data = cbind(Y, X), family = binomial, subset = train_labels)
+glm.probs <- predict(glm.fit, X.test, type = "response")
+glm.pred<-ifelse(glm.probs > .5, 1,0)
+table(glm.pred, Y.test)
+print(mean(glm.pred == Y.test))
+print(mean(glm.pred != Y.test))
+
+library(class)
+
+set.seed(1)
+for (k in 1:5) {
+  knn.pred <- knn(X.train, X.test, Y.train, k = k)
+  summary(knn.pred)
+  print(table(knn.pred, Y.test))
+  print(mean(knn.pred != Y.test))
+}

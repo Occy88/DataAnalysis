@@ -6,7 +6,6 @@
 library(MASS)
 library(ISLR)
 
-fix(Boston)
 data(Boston)
 attach(Boston)
 lm.fit <- lm(medv ~ lstat)
@@ -31,7 +30,6 @@ lm.fit
 lm.fit <- lm(medv ~ ., data = Boston)
 lm.fit
 
-fix(Carseats)
 names(Carseats)
 
 lm.fit <- lm(Sales ~ ., data = Carseats)

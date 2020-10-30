@@ -154,9 +154,12 @@ def print_solution(manager, routing, solution):
     index = routing.Start(0)
     plan_output = 'Route:\n'
     route_distance = 0
+    f=open('res',mode='w')
     while not routing.IsEnd(index):
         plan_output += ' {} ->'.format(manager.IndexToNode(index))
-        print(points[manager.IndexToNode(index)][0]/1000000, ',', points[manager.IndexToNode(index)][1]/1000000)
+        st=points[manager.IndexToNode(index)][0]/1000000, ',', points[manager.IndexToNode(index)][1]/1000000
+        f.write(st)
+        print(st)
         previous_index = index
         index = solution.Value(routing.NextVar(index))
         route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
