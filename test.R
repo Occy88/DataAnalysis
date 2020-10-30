@@ -2,8 +2,7 @@
 # Objective : TODO
 # Created by: caramel
 # Created on: 10/11/20
-install.packages('tree')
-install.packages('ISLR')
+
 library(tree)
 library(ISLR)
 data(Carseats)

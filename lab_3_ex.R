@@ -67,7 +67,7 @@ for (i in 1:length(quant)) {
 }
 Auto.train <- sample(1:nrow(Auto), 200)
 
-test=mpg01[-Auto.test]
+test=mpg01[-Auto.train]
 glm.fit<-glm(mpg01~displacement+horsepower+weight+acceleration,data=Auto,family=binomial,subset=Auto.train)
 
 #abline(lm.fit, lwd = 3, col = "red")
