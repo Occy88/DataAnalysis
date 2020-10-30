@@ -39,17 +39,29 @@ def gen_grid(geo_arr):
     lat_sorted = sort_by_col(geo_arr, 0)
     print("----------lat sort------------")
     print(lat_sorted)
-    long_sorted = np.flip(sort_by_col(geo_arr, 1), axis=0)
+    long_sorted = sort_by_col(geo_arr, 1)
 
     print("----------long sort------------")
 
     print(long_sorted)
     lat_min = lat_sorted[0][0]
-    lat_max = lat_sorted[len(long_sorted) - 1][0] + 0.002
-    long_min = long_sorted[0][1]
-    long_max = long_sorted[len(long_sorted) - 1][1] + 0.002
-    print(lat_min, lat_max, long_min, long_max)
+    lat_max = lat_sorted[len(lat_sorted) - 1][0]
+    if lat_min>lat_max:
+        tmp=lat_max
+        lat_max=lat_min
+        lat_min=tmp
+        lat_sorted=np.flip(lat_sorted,axis=0)
 
+    long_min = long_sorted[0][1]
+    long_max = long_sorted[len(long_sorted) - 1][1]
+    if long_min>long_max:
+        tmp=long_max
+        long_max=long_min
+        long_min=tmp
+        long_sorted=np.flip(long_sorted,axis=0)
+    print(lat_min, lat_max, long_min, long_max)
+    lat_max+=0.0005
+    long_max+=0.0005
     grid_lat_start = lat_min
     grid_long_start = long_min
     i = 0
@@ -71,14 +83,15 @@ def gen_grid(geo_arr):
             sublists.append([])
         sublists[lat_ind].append(p)
 
-    for l in sublists:
-        ln = sort_by_col(np.array(l), 1)
+
     s_i = 0
     for i, (lat, li) in enumerate(grid):
         if i >= len(sublists):
             # out of bounds
             break
-        subl_lat = np.flip(sort_by_col(np.array(sublists[i]), 1), axis=0)
+        subl_lat = sort_by_col(np.array(sublists[i]), 1)
+        if subl_lat[0][1]>subl_lat[len(subl_lat)-1][1]:
+            subl_lat=np.flip(subl_lat,axis=0)
         subl_lat_i = 0
         for j, (long, lj) in enumerate(li):
             if subl_lat_i >= len(subl_lat):
@@ -93,17 +106,18 @@ def gen_grid(geo_arr):
 
 
 grid = gen_grid(geo_arr)
+lengths=[]
 points = []
 for indi, (i, l) in enumerate(grid):
     for indj, (j, lj) in enumerate(l):
         if len(lj) > 0:
+            lengths.append(len(lj))
             points.append((i + (i - grid[indi + 1][0]) / 2, j + (j - grid[indi][1][indj + 1][0]) / 2))
 print(len(points))
 
 points=(np.array(points)*1000000).astype(int)
 
 import math
-import mlrose
 
 
 
@@ -181,7 +195,7 @@ def main():
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
-    search_parameters.time_limit.seconds = 60*5
+    search_parameters.time_limit.seconds = 60*1
     search_parameters.log_search = True
     # Solve the problem.
     solution = routing.SolveWithParameters(search_parameters)
@@ -193,9 +207,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-print('The best state found is: ', best_state)
-
-print('The fitness at the best state is: ', best_fitness)
-for p in best_state:
-    print(points[p][0], ',', points[p][1])
