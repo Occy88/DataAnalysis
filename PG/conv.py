@@ -1,14 +1,14 @@
 from __future__ import print_function
 
-import numpy as np
+import math
 from math import cos
-import math
-import math
-from ortools.constraint_solver import routing_enums_pb2
+
+import numpy as np
 from ortools.constraint_solver import pywrapcp
+from ortools.constraint_solver import routing_enums_pb2
 
 # width & height of grid square in m
-GRID_SQ_L = 0.04
+GRID_SQ_L = 0.05
 SHIFT = (GRID_SQ_L / 6378.1370) * (180 / math.pi)
 geo_arr = np.loadtxt('coords', delimiter=',')
 print(geo_arr.shape)
@@ -46,22 +46,22 @@ def gen_grid(geo_arr):
     print(long_sorted)
     lat_min = lat_sorted[0][0]
     lat_max = lat_sorted[len(lat_sorted) - 1][0]
-    if lat_min>lat_max:
-        tmp=lat_max
-        lat_max=lat_min
-        lat_min=tmp
-        lat_sorted=np.flip(lat_sorted,axis=0)
+    if lat_min > lat_max:
+        tmp = lat_max
+        lat_max = lat_min
+        lat_min = tmp
+        lat_sorted = np.flip(lat_sorted, axis=0)
 
     long_min = long_sorted[0][1]
     long_max = long_sorted[len(long_sorted) - 1][1]
-    if long_min>long_max:
-        tmp=long_max
-        long_max=long_min
-        long_min=tmp
-        long_sorted=np.flip(long_sorted,axis=0)
+    if long_min > long_max:
+        tmp = long_max
+        long_max = long_min
+        long_min = tmp
+        long_sorted = np.flip(long_sorted, axis=0)
     print(lat_min, lat_max, long_min, long_max)
-    lat_max+=0.0005
-    long_max+=0.0005
+    lat_max += 0.001
+    long_max += 0.001
     grid_lat_start = lat_min
     grid_long_start = long_min
     i = 0
@@ -83,15 +83,14 @@ def gen_grid(geo_arr):
             sublists.append([])
         sublists[lat_ind].append(p)
 
-
     s_i = 0
     for i, (lat, li) in enumerate(grid):
         if i >= len(sublists):
             # out of bounds
             break
         subl_lat = sort_by_col(np.array(sublists[i]), 1)
-        if subl_lat[0][1]>subl_lat[len(subl_lat)-1][1]:
-            subl_lat=np.flip(subl_lat,axis=0)
+        if subl_lat[0][1] > subl_lat[len(subl_lat) - 1][1]:
+            subl_lat = np.flip(subl_lat, axis=0)
         subl_lat_i = 0
         for j, (long, lj) in enumerate(li):
             if subl_lat_i >= len(subl_lat):
@@ -106,7 +105,7 @@ def gen_grid(geo_arr):
 
 
 grid = gen_grid(geo_arr)
-lengths=[]
+lengths = []
 points = []
 for indi, (i, l) in enumerate(grid):
     for indj, (j, lj) in enumerate(l):
@@ -115,18 +114,16 @@ for indi, (i, l) in enumerate(grid):
             points.append((i + (i - grid[indi + 1][0]) / 2, j + (j - grid[indi][1][indj + 1][0]) / 2))
 print(len(points))
 
-points=(np.array(points)*1000000).astype(int)
-
+points = (np.array(points) * 1000000).astype(int)
+# points = (geo_arr.copy()*1000000).astype(int)
 import math
-
-
 
 
 def create_data_model():
     """Stores the data for the problem."""
     data = {}
     # Locations in block units
-    data['locations'] = points # yapf: disable
+    data['locations'] = points  # yapf: disable
     data['num_vehicles'] = 1
     data['depot'] = 0
     return data
@@ -154,12 +151,13 @@ def print_solution(manager, routing, solution):
     index = routing.Start(0)
     plan_output = 'Route:\n'
     route_distance = 0
-    f=open('res',mode='w')
+    f = open('london', mode='w')
     while not routing.IsEnd(index):
         plan_output += ' {} ->'.format(manager.IndexToNode(index))
-        st=points[manager.IndexToNode(index)][0]/1000000, ',', points[manager.IndexToNode(index)][1]/1000000
-        f.write(st)
-        print(st)
+        st = (points[manager.IndexToNode(index)][0] / 1000000, points[manager.IndexToNode(index)][1] / 1000000)
+        out = str(st[0]) + ',' + str(st[1]) + '\n'
+        f.write(out)
+        print(out, end='')
         previous_index = index
         index = solution.Value(routing.NextVar(index))
         route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
@@ -198,7 +196,7 @@ def main():
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
-    search_parameters.time_limit.seconds = 60*1
+    search_parameters.time_limit.seconds = 60 * 3
     search_parameters.log_search = True
     # Solve the problem.
     solution = routing.SolveWithParameters(search_parameters)

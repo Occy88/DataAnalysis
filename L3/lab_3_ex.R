@@ -40,7 +40,20 @@ coeff <- lm.fit['coefficients'][[1]][-1]
 plot(all_vals, coeff, xlab = '2a (individual)', ylab = '2b (combined)')
 text(all_vals, coeff, names(Boston)[-1], cex = 0.6, pos = 4, col = 'blue')
 
-lm.fit <- lm(crim ~ ., data = Boston)
+for (val in names(Boston)[-1]) {
+  #  fit the machine X, X**2, x**3
+  x2 <- paste0(val, '2')
+  x3 <- paste0(val, '3')
+  Boston[x2] <- Boston[val]^2
+  Boston[x3] <- Boston[val]^3
+  print("-----------evaluating: ----------")
+  st <- paste0('crim ~ ', val, ' + ', x2, ' + ', x3)
+  print(st)
+  lm.fit <- lm(st, data = Boston)
+  coeff <- lm.fit['coefficients'][[1]]
+  print(coeff)
+}
+
 
 # ex 3
 data(Auto)
@@ -55,6 +68,7 @@ par(mfrow = c(3, 3))
 quant <- Auto[-length(Auto)]
 
 col_names <- names(quant)
+par(mar = c(2, 2, 2, 2))
 
 for (i in 1:length(quant)) {
   #cat(col_names[i],'vs',col_names[j],'\n')
@@ -122,7 +136,7 @@ for (i in 1:length(X)) {
 
 glm.fit <- glm(paste(colnames(Y), '~', paste(colnames(X), collapse = ' + '), sep = ' '), data = cbind(Y, X), family = binomial, subset = train_labels)
 glm.probs <- predict(glm.fit, X.test, type = "response")
-glm.pred<-ifelse(glm.probs > .5, 1,0)
+glm.pred <- ifelse(glm.probs > .5, 1, 0)
 table(glm.pred, Y.test)
 print(mean(glm.pred == Y.test))
 print(mean(glm.pred != Y.test))
@@ -130,8 +144,11 @@ print(mean(glm.pred != Y.test))
 library(class)
 
 set.seed(1)
-for (k in 1:5) {
-  knn.pred <- knn(X.train, X.test, Y.train, k = k)
+for (k in 1:10) {
+  n <- (k * 5 - 4)
+  print(n)
+
+  knn.pred <- knn(X.train, X.test, Y.train, k = n)
   summary(knn.pred)
   print(table(knn.pred, Y.test))
   print(mean(knn.pred != Y.test))
