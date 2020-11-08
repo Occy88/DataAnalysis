@@ -1,16 +1,18 @@
-# Title     : Task 1
+# Title     : Q1
 # Objective : Implement logistic regression algorithm using Gradient Descent in analogy
 # with neural networks
 # Created by: caramel
 # Created on: 07/11/2020
 
+# set a seed (my birthday is 08/10/1997)
+seed <- 1008
 
-# SMALL DESCRIPTION
-# I did not read the full assignment at this stage, hence
-# I implemented the algorithm using the Boston dataset
-# I predict the first column (Crime rate)
-# there are 300 epochs
-library(MASS)
+# previously used Boston to test my results .
+#install.packages('MASS')
+#library(MASS)
+
+# this function is not used, (as we were asked to use scale() instead)
+# I used this for testing my algorithm with Boston dataset.
 
 normalize <- function(x) {
   # Normalize a table ( x - mean(x) )
@@ -21,13 +23,13 @@ normalize <- function(x) {
 }
 
 # Declare some data for testing:
-data(Boston)
-Boston <- normalize(Boston)
-X <- Boston[-1]
-Y <- Boston[1]
+#data(Boston)
+#Boston <- normalize(Boston)
+#X <- Boston[-1]
+#Y <- Boston[1]
 
 #convert to 0,1 for above/below median.
-Y[[1]] <- ifelse(Y[[1]] > median(Y[[1]]), 1, 0)
+#Y[[1]] <- ifelse(Y[[1]] > median(Y[[1]]), 1, 0)
 
 
 # log odds function log( p(x)/1-p(x) )
@@ -59,6 +61,9 @@ sigmoid <- function(X, B, b0) {
   return(e_b_x / (1 + e_b_x))
 }
 
+
+# Using MSE
+
 # derivative of xi with respect to b (updating weights)
 
 derivative_wrt <- function(x, b) {
@@ -79,22 +84,19 @@ calc_derivatives <- function(y_p, X, Y) {
 
 # run epochs
 
-logistic_regression <- function(Y, X, train_split_size, seed) {
-  set.seed(seed)
+logistic_regression <- function(Y, X, train_split_size, learning_rate, epochs) {
+  # scale feature matrix:
   train_labels <- sample(1:nrow(Y), train_split_size)
+
   Y.train <- Y[train_labels,]
   Y.test <- Y[-train_labels,]
   X.train <- X[train_labels,]
   X.test <- X[-train_labels,]
 
-
-  # epochs
-  epochs <- 300
-
   #learning rate
-  lr <- 0.001
+  lr <- learning_rate
 
-  #  param vector (weights to be updated)
+  #  param vector (weights to be updated) -0.7 -> 0.7 (randomly)
   B <- runif(length(X.test), -0.7, 0.7)
   b0 <- 0
   for (e in 1:epochs) {
@@ -103,13 +105,17 @@ logistic_regression <- function(Y, X, train_split_size, seed) {
     B <- B - lr * d[-1]
     b0 <- b0 - lr * d[1]
   }
+  r_train <- ifelse(sigmoid(X.train, B, b0) > 0.5, 1, 0)
   # print result
-  r <- ifelse(sigmoid(X.test, B, b0) > 0.5, 1, 0)
+  r_test <- ifelse(sigmoid(X.test, B, b0) > 0.5, 1, 0)
   # error
   print("ERROR: ")
-  print(mean(r != Y.test))
+  print(mean(r_test != Y.test))
   print("ACCURACY: ")
-  print(mean(r == Y.test))
+  print(mean(r_train != Y.train))
+  results <- c(mean(r_test != Y.test),mean(r_train != Y.train))
+  return(results)
 
 }
+
 
