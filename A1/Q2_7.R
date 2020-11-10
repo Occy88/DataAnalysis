@@ -26,7 +26,7 @@ for (i in unlist(unique(Auto['origin']))[-1]) {
   X[paste0('origin', i)] <- ifelse(Auto['origin'] == i, 1, 0)[, 1]
 }
 
-logistic_regression(Y, X, 200, 0.001, 20)
+logistic_regression(Y, X, 200, 0.05, 20)
 #paste0('origin', i)
 
 # now test this on glm from R (logistic regression)
@@ -53,8 +53,8 @@ print(mean(glm.pred != Y.test))
 # ============ Q 4 ==============
 # The random numbers are already declared between -0.7 -> 0.7 for each weight (see Q1 file)
 split_size <- as.integer(length(X[, 1]) / 2)
-learning_rate_tests <- c(0.001, 0.002, 0.004, 0.01, 0.04, 0.1, 0.2)
-epoch_tests <- c(1, 2, 4, 8, 16, 32, 64)
+learning_rate_tests <- c(0.001, 0.003, 0.006, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2)
+epoch_tests <- c(1, 5, 10, 15, 20, 30, 50, 70, 100, 200)
 errors <- logistic_regression(Y, X, split_size, 0.001, 20)
 result_length <- length(learning_rate_tests) * length(epoch_tests)
 results_table_test <- matrix(0.1, nrow = length(epoch_tests), ncol = length(learning_rate_tests), dimnames = list(epoch_tests, learning_rate_tests))
@@ -96,7 +96,7 @@ logistic_regression_1_percent <- function(Y, X, train_split_size, learning_rate)
     d <- calc_derivatives(y_p, X.train, Y.train)
     B <- B - lr * d[-1]
     b0 <- b0 - lr * d[1]
-    r_train <- mean(ifelse(sigmoid(X.train, B, b0) > 0.5, 1, 0))
+    r_train <- mean((sigmoid(X.train, B, b0) - Y.train)^2)
     r_train_top <- r_train * 1.01
     r_train_bottom <- r_train * 0.99
     if (training_mse_last < r_train_bottom || training_mse_last > r_train_top) {
@@ -106,15 +106,15 @@ logistic_regression_1_percent <- function(Y, X, train_split_size, learning_rate)
     }
     steps_since_last_change <- steps_since_last_change + 1
   }
-  r_train <- ifelse(sigmoid(X.train, B, b0) > 0.5, 1, 0)
+  r_train <- mean((sigmoid(X.train, B, b0) - Y.train)^2)
   # print result
-  r_test <- ifelse(sigmoid(X.test, B, b0) > 0.5, 1, 0)
+  r_test <- mean((sigmoid(X.test, B, b0) - Y.test)^2)
   # error
-  print("ERROR: ")
-  print(mean(r_test != Y.test))
-  print("ACCURACY: ")
-  print(mean(r_train != Y.train))
-  results <- c(mean(r_test != Y.test), mean(r_train != Y.train))
+  print("MSE TEST: ")
+  print(r_test)
+  print("MSE TRAIN: ")
+  print(r_train)
+  results <- c(r_test, r_train)
   return(results)
 }
 
@@ -122,13 +122,13 @@ logistic_regression_1_percent <- function(Y, X, train_split_size, learning_rate)
 # 0.04,8 from table
 res <- rep(0, 100)
 for (i in 1:length(res)) {
-  res[i] <- logistic_regression(Y, X, split_size, 0.04, 8)[1]
+  res[i] <- logistic_regression(Y, X, split_size, 0.04, 30)[1]
 }
 boxplot(res)
 
 #===================== Q 7 =======================
 
-logistic_regression_1_percent_4time <- function(Y, X, train_split_size, learning_rate) {
+logistic_regression_1_percent_4time <- function(Y, X, train_split_size, learning_rate, epochs) {
   # scale feature matrix:
   train_labels <- sample(1:nrow(Y), train_split_size)
 
@@ -139,52 +139,58 @@ logistic_regression_1_percent_4time <- function(Y, X, train_split_size, learning
 
   #learning rate
   lr <- learning_rate
-
-  #  param vector (weights to be updated) -0.7 -> 0.7 (randomly)
-  B <- runif(length(X.test), -0.7, 0.7)
-  b0 <- 0
-  # stopping rule, if value changes by more than 1% over 10 steps keep going otherwise stop.
-  steps_since_last_change <- 0
-  # some impossible mse that is > 1% of any possible mse (for initial assignment)
-  training_mse_last <- 100
-  while (steps_since_last_change < 10) {
-    min_mse <- 100
-    min_p_rule_b0 <- NULL
-    min_p_rule_B <- NULL
-    for (i in 1:4) {
+  min_mse <- 100
+  min_p_rule_b0 <- NULL
+  min_p_rule_B <- NULL
+  for (i in 1:4) {
+    #  param vector (weights to be updated) -0.7 -> 0.7 (randomly)
+    B <- runif(length(X.test), -0.7, 0.7)
+    b0 <- 0
+    for (e in 1:epochs) {
       y_p <- sigmoid(X.train, B, b0)
       d <- calc_derivatives(y_p, X.train, Y.train)
-      B_temp <- B - lr * d[-1]
-      b0_temp <- b0 - lr * d[1]
-      r_train <- mean(ifelse(sigmoid(X.train, B_temp, b0_temp) > 0.5, 1, 0))
-      if (r_train < min_mse) {
-        min_mse <- r_train
-        min_p_rule_b0 <- b0_temp
-        min_p_rule_B <- B_temp
-      }
-      B <- min_p_rule_B
-      b0 <- min_p_rule_b0
+      B <- B - lr * d[-1]
+      b0 <- b0 - lr * d[1]
+    }
+    difference <- sigmoid(X.train, B, b0) - Y.train
+    if(!is.finite(mean(difference^2))){
+      print("debug")
     }
 
-    r_train_top <- r_train * 1.01
-    r_train_bottom <- r_train * 0.99
-    if (training_mse_last < r_train_bottom || training_mse_last > r_train_top) {
-      training_mse_last <- r_train
-      #reset counter
-      steps_since_last_change <- 0
+    r_train <- mean(difference^2)
+    if (r_train < min_mse) {
+      min_mse <- r_train
+      min_p_rule_b0 <- b0
+      min_p_rule_B <- B
     }
-    steps_since_last_change <- steps_since_last_change + 1
   }
-  r_train <- ifelse(sigmoid(X.train, B, b0) > 0.5, 1, 0)
+
+  r_train <- mean((sigmoid(X.train, min_p_rule_B, min_p_rule_b0) - Y.train)^2)
   # print result
-  r_test <- ifelse(sigmoid(X.test, B, b0) > 0.5, 1, 0)
+  r_test <- mean((sigmoid(X.test, min_p_rule_B, min_p_rule_b0) - Y.test)^2)
   # error
-  print("ERROR: ")
-  print(mean(r_test != Y.test))
-  print("ACCURACY: ")
-  print(mean(r_train != Y.train))
-  results <- c(mean(r_test != Y.test), mean(r_train != Y.train))
+  print("MSE TEST: ")
+  print(r_test)
+  print("MSE TRAIN: ")
+  print(r_train)
+  results <- c(r_test, r_train)
   return(results)
 }
 
-print(logistic_regression_1_percent_4time(Y, X, split_size, 0.04))
+# The random numbers are already declared between -0.7 -> 0.7 for each weight (see Q1 file)
+split_size <- as.integer(length(X[, 1]) / 2)
+learning_rate_tests <- c(0.001, 0.003, 0.006, 0.01, 0.02, 0.04, 0.06, 0.08)
+epoch_tests <- c(1, 5, 10, 15, 20, 30, 50)
+#errors <- logistic_regression(Y, X, split_size, 0.001, 20)
+result_length <- length(learning_rate_tests) * length(epoch_tests)
+results_table_test <- matrix(0.1, nrow = length(epoch_tests), ncol = length(learning_rate_tests), dimnames = list(epoch_tests, learning_rate_tests))
+results_table_train <- matrix(0.1, nrow = length(epoch_tests), ncol = length(learning_rate_tests), dimnames = list(epoch_tests, learning_rate_tests))
+
+for (i in 1:length(epoch_tests)) {
+  for (j in 1:length(learning_rate_tests)) {
+    errors <- logistic_regression_1_percent_4time(Y, X, split_size, learning_rate_tests[j], epoch_tests[i])
+    results_table_test[i, j] <- errors[1]
+    results_table_train[i, j] <- errors[2]
+  }
+}
+

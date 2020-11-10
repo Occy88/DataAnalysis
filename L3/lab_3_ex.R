@@ -2,7 +2,6 @@
 # Objective : TODO
 # Created by: caramel
 # Created on: 27/10/2020
-
 library(MASS)
 library(ISLR)
 data(Auto)
