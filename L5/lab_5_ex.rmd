@@ -6,107 +6,55 @@ output: html_notebook
 ---
 
 ##Question 1
+Probability that first observation from the first bootstrap sample is not the jth observation
+from original sample of size n:
+This is the equivalent of 1-P(O1==Oj)
+hence 1-(1/n)
+
+##Question 2
+Same as question 1 because samples are generated with replacement.
+
+
+##Question 3
+For the j'th probability to not be in the sample, it must not be in the first, second ... nth observation
+in the Boostrap sample.
+hence we multiply the probabilities (1-1/n) (not the first, second, third...) by each other so it becomes (not the first and not the second and not the third... ).
+The result is (1-1/n)^n  power being number of observations in the given boostrap sample (which is the same as the number of observations in the set of observations)
 ```{r}
-Power <- function() {
-  x <- 2^3
-  print(x)
-  return(x)
+p <- function(n) {
+  return((1 - (1 / n))^n)
 }
 ```
 
-##Question 2
-```{r}
-Power2 <- function(a, b) {
-  x <- a^b
-  print(x)
-  return(x)
-}
-```
-##Question 3
-```{r}
-Power2(10, 3)
-Power2(8, 17)
-Power2(131, 3)
-```
 ##Question 4
 ```{r}
-Power3 <- Power2
-print(Power3(4, 2))
+p(5)
 ```
 ##Question 5
 ```{r}
-x <- 1:10
-y <- Power3(x, 2)
-par(mfrow = c(2, 1))
-
-plot(x, y, xlab = '1->10', ylab = '(1->10)^2')
-plot(x, y, log = 'y', xlab = '1->10', ylab = '(1->10)^2')
+p(100)
 ```
 ##Question 6
 ```{r}
-
-PlotPower <- function(x, power) {
-  plot(x, Power3(x, power), xlab = 'x', ylab = paste0('x^', power))
-}
-
-PlotPower(1:10, 3)
+p(10000)
 ```
 ##Question 7
+p(n) converges to ~ 0.3679 as n tends to infinity.
 ```{r}
-
-sum_p <- function(n, power) {
-  return(sum(Power3(1:n, power)))
-}
-
-sum2 <- function(n) {
-  return(sum_p(n, 2))
-}
-
-sum2(3)
+n <- 1:100000
+y <- p(n)
+plot(n, y, xlab = 'n: 1:100,000', ylab = 'p(n) | p=(1-(1/n))^n)')
 ```
 ##Question 8
+Error is acceptable
 ```{r}
-
-sum3 <- function(n) {
-  return(sum_p(n, 3))
+store <- rep(0, 10000)
+for (i in 1:10000) {
+  store[i] <- sum(sample(1:100, rep = TRUE) == 4) > 0
 }
+r <- mean(store)
+e <- 1 - p(100)
 
-sum3(3)
-```
-##Question 9
-My only reasoning is that the dataset is small,values are random throughout the
-whole dataset, hence data snooping will make a very small difference
-in the results for this case.
-```{r}
-# -2:
-library(ISLR)
-library(class)
-library(MASS)
-X <- Caravan[, -86]
-Y <- Caravan[, 86]
-test <- 1:1000
-X.train <- scale(X[-test,])
-X.test <- scale(X[test,],
-                center = attr(X.train, 'scaled:center'),
-                scale = attr(X.train, 'scaled:scale'))
-Y.train <- Y[-test]
-Y.test <- Y[test]
-set.seed(1)
-knn.pred1 <- knn(X.train, X.test, Y.train, k = 1)
-knn.pred3 <- knn(X.train, X.test, Y.train, k = 3)
-knn.pred5 <- knn(X.train, X.test, Y.train, k = 5)
-
-mean(Y.test != knn.pred1)
-# 0.117
-mean(Y.test != "No")
-# 0.059
-table(knn.pred1, Y.test)
-# 9/76 = 0.118421053
-
-table(knn.pred3, Y.test)
-# 6/20 = 0.2308
-table(knn.pred5, Y.test)
-# 3/13 = 0.2308
-
-# difference from the lab is not siginificant.
+paste0("result:", r)
+paste0("expected: ", e)
 ```
