@@ -5,7 +5,7 @@
 #install.packages('import')
 #install.packages('ISLR')
 #library(import)
-#import::from('./Q1.R', logistic_regression)
+#import::from('./source_code.rmd', logistic_regression)
 source('./A1/Q1.R')
 library(ISLR)
 data(Auto)
