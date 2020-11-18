@@ -151,7 +151,7 @@ def print_solution(manager, routing, solution):
     index = routing.Start(0)
     plan_output = 'Route:\n'
     route_distance = 0
-    f = open('london', mode='w')
+    f = open('japan_tok1', mode='w')
     while not routing.IsEnd(index):
         plan_output += ' {} ->'.format(manager.IndexToNode(index))
         st = (points[manager.IndexToNode(index)][0] / 1000000, points[manager.IndexToNode(index)][1] / 1000000)
