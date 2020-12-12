@@ -1,0 +1,327 @@
+---
+title: "R Notebook"
+author: Octavio del Ser
+date: 10/11/2020
+output: html_notebook
+---
+## Task1  Source code
+###
+
+Implement hierarchial agglomerative clustering with single, complete, average and centroid linkage.
+$R_1(j,s)={X|X_j<s}$<br>
+R2 can be calculated by doing !R1.
+```{r}
+library(purrr)
+l2_norm <- function(x, y) {
+  s <- (x - y)^2
+  return(sqrt(sum((x - y)^2)))
+}
+dist_m <- function(x, y) {
+
+  d <- list()
+  if(sum(c(ncol(x),ncol(y)))>4){
+    c<-unlist(d)
+  }
+  i <- 0
+  for (v in 1:ncol(x)) {
+    for (v2 in 1:ncol(y)) {
+      i <- i + 1
+      d[[i]] <- l2_norm(x[, v], y[, v2])
+    }
+  }
+   if(sum(c(ncol(x),ncol(y)))>4){
+    c<-unlist(d)
+  }
+  return(unlist(d))
+}
+single_l <- function(x, y) {
+  return(min(dist_m(x, y)))
+}
+complete_l <- function(x, y) {
+  if (ncol(x) > 1) {
+    paste0('hi')
+    l2 <- dist_m(x, y)
+    m <- max(l2)
+  }
+  l2 <- dist_m(x, y)
+  m <- max(l2)
+  return(m)
+}
+average_l <- function(x, y) {
+  return((1 / (length(x) + length(y))) * sum(dist_m(x, y)))
+}
+centroid_l <- function(x, y) {
+  return(l2_norm(mean(x), mean(y)))
+}
+calc_similarity <- function(cluster, measure, n_attr) {
+  sim <- matrix(nrow = length(cluster), ncol = length(cluster))
+  for (i in 1:length(cluster)) {
+    for (j in 1:length(cluster)) {
+      if (j != i) {
+        sim[i, j] <- measure(matrix(cluster[[i]], nrow = n_attr), matrix(cluster[[j]], nrow = n_attr))
+      }else {
+        sim[i, j] <- Inf
+      }
+    }
+  }
+  return(sim)
+}
+
+merge_cluster <- function(cluster, measure, n_attr) {
+  d <- calc_similarity(cluster, measure, n_attr)
+  min_rc <- which(d == min(d), arr.ind = TRUE)[1,]
+  cluster[[ min_rc[[1]]]] <- c(cluster[[min_rc[[1]]]], cluster[[min_rc[[2]]]])
+  return(list(cluster[-min_rc[[2]]], min_rc, min(d)))
+}
+my_hclust <- function(clusters, measure, n_attr) {
+  combined <- list()
+  i <- 0
+  n_attr <- length(clusters[[1]])
+  while (length(clusters) > 1) {
+    i <- i + 1
+    results <- merge_cluster(clusters, measure, n_attr)
+    combined[[i]] <- unlist(results[[3]])
+    clusters <- results[[1]]
+  }
+  return(combined)
+}
+
+x <- USArrests
+x <- matrix(c(1, 2, 3, 4, 5), ncol = 1)
+y <- t(x)
+clusters <- lapply(seq_len(ncol(y)), function(i) y[, i])
+merges <- my_hclust(clusters, complete_l)
+hc.complete <- hclust(dist(x), method = "complete")
+plot(hc.complete, main = "Complete Linkage", xlab = "", sub = "", cex = .9)
+
+
+```
+### RSS
+Returns the RSS: <br>
+$\sum_{i:x_i \in R_1(j,s)}(y_i-\hat{y}R_1)^2+\sum_{i:x_i \in R_2(j,s)}(y_i-\hat{y}R_2)^2$
+```{r}
+rss <- function(s, Xj, Y) {
+  r1 <- R1(Xj, s)
+  yi_r1 <- Y[which(r1 == TRUE)]
+  yhat_R1 <- mean(yi_r1)
+  yi_r2 <- Y[which(r1 == FALSE)]
+  yhat_R2 <- mean(yi_r2)
+  return(sum((yi_r1 - yhat_R1)^2) + sum((yi_r2 - yhat_R2)^2))
+}
+```
+### Split vector (step size)
+This is used to generate each value of s (which splits to consider) <br>
+Given a vector e.g. (1,3,10,2,19,0)<br>
+An ordered vector is return with the following properties<br>
+(min(v) + step size,min(v)+2*step_size,... max(v)-step size)
+```{r}
+gen_splits_by_step_size <- function(vector, step_size) {
+  rg <- range(vector)
+  return(seq(rg[1] + step_size, rg[2] - step_size, by = step_size))
+}
+```
+### Split vector
+An alternative way to generate s<br>
+we can choose how many splits instead of the step size.
+```{r}
+gen_splits_by_no_splits <- function(vector, no_splits) {
+  step_size <- diff(rg) / no_splits
+  return(gen_splits_by_step_size(step_size))
+}
+```
+### Min split
+Finds the minimum split of a vector using rss <br.
+and iterating through each feature and each split vector for said feature.<br>
+finally choosing s and j by minimizing rss.
+```{r}
+min_split <- function(X, Y, split_step_sizes) {
+  min_rss_vals <- rep(NaN, length(X))
+  min_s_vals <- rep(NaN, length(X))
+  i <- 1
+  for (Xj in X) {
+    splits <- gen_splits_by_step_size(Xj, split_step_sizes[i])
+    temp_rss <- rep(NaN, length(splits))
+    j <- 1
+    for (s in splits) {
+      temp_rss[j] <- rss(s, Xj, Y)
+      j <- j + 1
+    }
+    min_index <- which.min(temp_rss)
+    min_s_vals[i] <- splits[min_index]
+    min_rss_vals[i] <- temp_rss[min_index]
+    i <- i + 1
+  }
+  j <- which.min(min_rss_vals)
+  s <- min_s_vals[j]
+  return(c(j, s))
+}
+```
+### Decision Stump MSE
+Finds the mse for a given stump (split) <br>
+MSE is defined by
+$\frac{RSS}{\#X_j}$
+```{r}
+ds_mse <- function(j, s, X, Y) {
+  return(rss(s, X[, j], Y) / length(X[, j]))
+}
+
+```
+### Declaring necessary Libraries
+```{r}
+library("MASS")
+library("ISLR")
+# tree (for testing and comparison only)
+library("tree")
+library("class")
+```
+## Question 1 - Answers & tests
+Answers are not explicitly hardcoded (typed) but rather generated and printed <br>
+from the code hence I will not be typing them, but printing them nicely instead.<br><br>
+
+Using Boston dataset
+```{r}
+data(Boston)
+```
+Seed set to birthday MMDD
+```{r}
+set.seed(1008)
+```
+X ; Features are rm and lstat from Boston dataset.
+Y: we are predicting medv from Boston dataset.
+```{r}
+X <- data.frame(Boston['rm'], Boston['lstat'])
+Y <- Boston['medv']
+```
+For both rm and lstat, we are considering splits at steps of 0.1
+```{r}
+split_step_sizes <- rep(0.1, length(X))
+```
+Splitting the dataset into train and test sets <br>
+The training set is half of the dataset.
+```{r}
+train_split_size <- as.integer(length(X[, 1]) / 2)
+train_labels <- sample(1:nrow(Y), train_split_size)
+Y.train <- Y[train_labels,]
+Y.test <- Y[-train_labels,]
+X.train <- X[train_labels,]
+X.test <- X[-train_labels,]
+```
+Finding the minimum (j & s) split for the whole of the training dataset.
+```{r}
+res <- min_split(X.train, Y.train, split_step_sizes)
+print(res)
+print(paste0(colnames(X)[res[1]], ': split at ', res[2]))
+```
+Finding MSE for the whole of the test dataset given s & j from training dataset.
+```{r}
+ds_mse(res[1], res[2], X.test, Y.test)
+```
+
+A quick plot to visualize the split over the training data <br>
+```{r}
+plot(Y.train, X.train[, res[1]], ylab = colnames(Y), xlab = colnames(X)[res[1]])
+abline(0, 0, res[2])
+```
+A sanity check against R's implementation (we are only interested in the first split of the tree)
+```{r}
+tree.carseats <- tree(medv ~ rm + lstat, Boston, subset = train_labels)
+summary(tree.carseats)
+plot(tree.carseats)
+text(tree.carseats, pretty = 0)
+```
+We can see that the first split was at 4.64 which is close the obtained result at lstat: 4.63. <br>
+Error can be due to difference in splits considered.
+
+## Question 2,3  Source code
+
+### BDS
+BDS algorithm as presented in the assignment Instructions
+```{r}
+bds <- function(B, Y, X, split_step_sizes, lr) {
+  s <- 0
+  r <- Y
+  for (b in B) {
+    f_b <- min_split(X, r, (split_step_sizes))
+    s <- s + f_b[2] * lr
+    r <- r - lr * f_b[2]
+  }
+  return(s)
+}
+```
+### Question 2
+Only run bds for the stump that had the min oucome int he first result <br>
+The output is the test MSE observed for n=0.01 and B=1000
+```{r}
+ds_mse(res[1], bds(1:1000, Y.train, data.frame(X.train[res[1]]), (0.1), 0.01), X.test, Y.test)
+```
+### Question 3
+
+Running bds on 30 values of n 1-> 900 (n^2 series) <br>
+Each n represents the number of trees bds was run with. <br>
+A graph is then plotted of MSE against n.<br>
+learning rate is still 0.01.
+```{r}
+n <- 30
+x <- rep(0, n)
+i <- 1
+for (b in (1:n)^2) {
+  x[i] <- ds_mse(res[1], bds(1:b, Y.train, data.frame(X.train[res[1]]), (0.1), 0.01), X.test, Y.test)
+  i <- i + 1
+}
+plot((1:n)^2, x, ylab = 'MSE', xlab = 'B')
+```
+
+We can observe that there is clear over-fitting past the lowest point in the graph <br>
+for increasing B number of trees.<br>
+There is also clear under-fitting with fewer trees..
+
+
+[[1]] = 2.291288
+[[2]] = 3.834058
+[[3]] = 3.929377
+[[4]] = 6.236986
+[[5]] = 6.637771
+[[6]] = 7.35527
+[[7]] = 8.027453
+[[8]] = 8.537564
+[[9]] = 9.508417
+[[10]] = 10.30534
+[[11]] = 11.45644
+[[12]] = 12.21352
+[[13]] = 12.42497
+[[14]] = 12.61428
+[[15]] = 12.77537
+[[16]] = 13.04492
+[[17]] = 13.29737
+[[18]] = 13.34916
+[[19]] = 13.4097
+[[20]] = 13.54253
+[[21]] = 13.89604
+[[22]] = 14.50103
+[[23]] = 15.01599
+[[24]] = 15.45445
+[[25]] = 15.59166
+[[26]] = 15.75595
+[[27]] = 16.80625
+[[28]] = 18.7139
+[[29]] = 21.16719
+[[30]] = 22.51844
+[[31]] = 23.19418
+[[32]] = 24.89438
+[[33]] = 25.09303
+[[34]] = 26.11073
+[[35]] = 26.249
+[[36]] = 27.06234
+[[37]] = 28.48543
+[[38]] = 28.63512
+[[39]] = 29.40782
+[[40]] = 32.38534
+[[41]] = 35.05382
+[[42]] = 35.57134
+[[43]] = 37.63044
+[[44]] = 38.52791
+[[45]] = 46.12949
+[[46]] = 68.99681
+[[47]] = 89.03263
+[[48]] = 110.6608
+[[49]] = 214.2441
