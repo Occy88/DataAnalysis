@@ -72,34 +72,29 @@ merge_cluster <- function(cluster, measure, n_attr) {
   min_rc <- which(d == min(d), arr.ind = TRUE)[1,]
   c1 <- cluster[[min_rc[[1]]]]
   c2 <- cluster[[min_rc[[2]]]]
-  if (length(c1) >= length(c2)) {
-    cluster[[ min_rc[[1]]]] <- c(c2, c1)
-    return(list(cluster[-min_rc[[2]]], unlist(min_rc), min(d)))
-  }else {
-    cluster[[ min_rc[[2]]]] <- c(c1, c2)
-    return(list(cluster[-min_rc[[1]]], unlist(rev(min_rc)), min(d)))
-  }
-
+  cluster[[ min_rc[[1]]]] <- c(c2, c1)
+  return(list(cluster[-min_rc[[2]]], unlist(min_rc), min(d)))
 }
 my_hclust <- function(clusters, measure, n_attr) {
   cluster_ids <- 1:length(clusters)
   cluster_ids <- cluster_ids * -1
   combination_matrix <- matrix(ncol = 2, nrow = length(clusters) - 1)
-  #combined <- list()
-  order <- c(1,1)
+  heights <- list()
+  order <- c(1, 1)
   i <- 0
   n_attr <- length(clusters[[1]])
   while (length(clusters) > 1) {
     i <- i + 1
     results <- merge_cluster(clusters, measure, n_attr)
     ids_combined <- results[[2]]
+    heights[[i]] <- results[[3]]
     ids_c_values <- c(cluster_ids[ids_combined[[1]]], cluster_ids[ids_combined[[2]]])
     if (max(ids_c_values) < 0) {
-      order <- c(order, ids_c_values)
+      order <- c(order, rev(ids_c_values))
       combination_matrix[i, 1] <- max(ids_c_values)
       combination_matrix[i, 2] <- min(ids_c_values)
     }else {
-      order <- c(ids_c_values, order)
+      order <- c(rev(ids_c_values), order)
 
       combination_matrix[i, 1] <- min(ids_c_values)
       combination_matrix[i, 2] <- max(ids_c_values)
@@ -111,7 +106,9 @@ my_hclust <- function(clusters, measure, n_attr) {
 
     clusters <- results[[1]]
   }
-  return(list(clusters, combination_matrix,order))
+  order <- abs(order[order < 0])
+  mode(combination_matrix) <- 'Integer'
+  return(list(combination_matrix, unlist(heights), order))
 }
 
 x <- USArrests
@@ -120,6 +117,11 @@ x <- matrix(c(1, 2, 10, 0, 12, 14, 15), ncol = 1)
 y <- t(x)
 clusters <- lapply(seq_len(ncol(y)), function(i) y[, i])
 merges <- my_hclust(clusters, complete_l)
+res <- list()
+res$merge <- merges[[1]]
+res$height <- merges[[2]]
+res$order <- merges[[3]]
+den <- as.dendrogram(res)
 hc.complete <- hclust(dist(x), method = "complete")
 #plot(hc.complete, main = "Complete Linkage", xlab = "", sub = "", cex = .9)
 
