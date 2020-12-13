@@ -19,8 +19,8 @@ l2_norm <- function(x, y) {
 dist_m <- function(x, y) {
 
   d <- list()
-  if(sum(c(ncol(x),ncol(y)))>4){
-    c<-unlist(d)
+  if (sum(c(ncol(x), ncol(y))) > 4) {
+    c <- unlist(d)
   }
   i <- 0
   for (v in 1:ncol(x)) {
@@ -29,8 +29,8 @@ dist_m <- function(x, y) {
       d[[i]] <- l2_norm(x[, v], y[, v2])
     }
   }
-   if(sum(c(ncol(x),ncol(y)))>4){
-    c<-unlist(d)
+  if (sum(c(ncol(x), ncol(y))) > 4) {
+    c <- unlist(d)
   }
   return(unlist(d))
 }
@@ -70,29 +70,58 @@ calc_similarity <- function(cluster, measure, n_attr) {
 merge_cluster <- function(cluster, measure, n_attr) {
   d <- calc_similarity(cluster, measure, n_attr)
   min_rc <- which(d == min(d), arr.ind = TRUE)[1,]
-  cluster[[ min_rc[[1]]]] <- c(cluster[[min_rc[[1]]]], cluster[[min_rc[[2]]]])
-  return(list(cluster[-min_rc[[2]]], min_rc, min(d)))
+  c1 <- cluster[[min_rc[[1]]]]
+  c2 <- cluster[[min_rc[[2]]]]
+  if (length(c1) >= length(c2)) {
+    cluster[[ min_rc[[1]]]] <- c(c2, c1)
+    return(list(cluster[-min_rc[[2]]], unlist(min_rc), min(d)))
+  }else {
+    cluster[[ min_rc[[2]]]] <- c(c1, c2)
+    return(list(cluster[-min_rc[[1]]], unlist(rev(min_rc)), min(d)))
+  }
+
 }
 my_hclust <- function(clusters, measure, n_attr) {
-  combined <- list()
+  cluster_ids <- 1:length(clusters)
+  cluster_ids <- cluster_ids * -1
+  combination_matrix <- matrix(ncol = 2, nrow = length(clusters) - 1)
+  #combined <- list()
+  order <- c(1,1)
   i <- 0
   n_attr <- length(clusters[[1]])
   while (length(clusters) > 1) {
     i <- i + 1
     results <- merge_cluster(clusters, measure, n_attr)
-    combined[[i]] <- unlist(results[[3]])
+    ids_combined <- results[[2]]
+    ids_c_values <- c(cluster_ids[ids_combined[[1]]], cluster_ids[ids_combined[[2]]])
+    if (max(ids_c_values) < 0) {
+      order <- c(order, ids_c_values)
+      combination_matrix[i, 1] <- max(ids_c_values)
+      combination_matrix[i, 2] <- min(ids_c_values)
+    }else {
+      order <- c(ids_c_values, order)
+
+      combination_matrix[i, 1] <- min(ids_c_values)
+      combination_matrix[i, 2] <- max(ids_c_values)
+    }
+
+    cluster_ids[ids_combined[[1]]] <- i
+    cluster_ids <- cluster_ids[-ids_combined[[2]]]
+
+
     clusters <- results[[1]]
   }
-  return(combined)
+  return(list(clusters, combination_matrix,order))
 }
 
 x <- USArrests
-x <- matrix(c(1, 2, 3, 4, 5), ncol = 1)
+#            (1, 2, ,3, 4,  5,  6,  7)
+x <- matrix(c(1, 2, 10, 0, 12, 14, 15), ncol = 1)
 y <- t(x)
 clusters <- lapply(seq_len(ncol(y)), function(i) y[, i])
 merges <- my_hclust(clusters, complete_l)
 hc.complete <- hclust(dist(x), method = "complete")
-plot(hc.complete, main = "Complete Linkage", xlab = "", sub = "", cex = .9)
+#plot(hc.complete, main = "Complete Linkage", xlab = "", sub = "", cex = .9)
 
 
 ```
