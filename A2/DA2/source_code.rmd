@@ -191,3 +191,99 @@ plot((1:n)^2, x,ylab = 'MSE',xlab = 'B')
 We can observe that there is clear over-fitting past the lowest point in the graph <br>
 for increasing B number of trees.<br>
 There is also clear under-fitting with fewer trees..
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+my_hclust <- function(d, measure='complete') {
+
+  # Cluster measure must be one of the following:
+  measure_fn <- switch(match.arg(measure),
+                       single = min,
+                       complete = max,
+                       average = mean,
+                       median = median)
+  n_clust <- nrow(d)
+  diag(d) <- Inf
+  # initial group id's (r sets all (original clusters) to -index)
+  groups <- (1:n_clust) * -1
+  m <- matrix(0, nrow = n_clust - 1, ncol = 2)   # hclust merge output
+  heights <- list()
+  for (j in 1:(n_clust - 1))
+    {
+    print(paste0("percent done: ",j/n_clust))
+    #find index of min (gets only one)
+    min_i <- which.min(d,arr.ind=TRUE)
+    print(min_i)
+    #save the min height
+    heights[[j]] <- d[min_i]
+    #recover all pairs given the index
+    p <- groups[min_i]
+    # R's convention is to order each m[j,] pair as follows:
+    p <- p[order(p)]
+    m[j,] <- p
+    # Agglomerate this pair and all previous groups they belong to
+    # into the current jth group:
+    grp <- c(min_i, which(groups %in% groups[min_i[1, groups[min_i] > 0]]))
+    groups[grp] <- j
+    # Concoct replacement distances that consolidate our pair using `method`:
+    r <- apply(d[min_i,], 2, measure_fn)
+    # Move on to the next minimum distance, excluding current one by modifying
+    # the distance matrix:
+    d[min(min_i),] <- d[, min(min_i)] <- r
+    d[min(min_i), min(min_i)] <- Inf
+    d[max(min_i),] <- d[, max(min_i)] <- Inf
+  }
+
+  # copy of hclust implementation so it's compatible with plot function
+  return(structure(list(merge = m, height = unlist(heights),
+                        labels = rownames(d), method = measure,
+                        call = match.call(), dist.method = "euclidean"),
+                   class = "hclust"))
+  order <- abs(order[order < 0])
+  mode(combination_matrix) <- 'Integer'
+  return(list(combination_matrix, unlist(heigh, ts), order))
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
